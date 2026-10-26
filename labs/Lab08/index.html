@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics 311 - Lab 8 Port</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Lab 8 — Port Your Integrator to JavaScript</h1>
+    
+    <div class="panel">
+        <label for="integrator">Integrator:</label>
+        <select id="integrator">
+            <option value="verlet">Velocity Verlet</option>
+            <option value="euler-cromer">Euler-Cromer</option>
+            <option value="euler">Explicit Euler</option>
+        </select>
+
+        <label for="scene">Scene:</label>
+        <select id="scene">
+            <option value="projectile">Projectile (v0=25, 45°)</option>
+            <option value="spring">Spring Oscillator (m=k=1)</option>
+        </select>
+
+        <label for="dt">DT:</label>
+        <select id="dt">
+            <option value="240">1/240 s</option>
+            <option value="120">1/120 s</option>
+            <option value="60">1/60 s</option>
+            <option value="20">1/20 s</option>
+        </select>
+
+        <button id="pause">Pause</button>
+        <button id="reset" class="alt">Reset</button>
+        <button id="validate" class="alt">Validate</button>
+        <button id="headlessTenSec">Run Headless (1200 steps)</button>
+        <label style="margin-left: 15px; color: #ff8200; font-weight: bold;">
+    <input type="checkbox" id="variableModeToggle"> Force Variable Timestep Mode
+</label>
+    </div>
+
+    <canvas id="sim" width="800" height="500"></canvas>
+    
+    <h2>Validation Output Logs</h2>
+    <div id="log">Click "Validate" to check numbers against Python...</div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
