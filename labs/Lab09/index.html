@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 09 - Modular Physics Simulation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="dashboard">
+        <div class="control-group">
+            <label for="sceneSelect">Simulation Scene:</label>
+            <select id="sceneSelect">
+                <option value="billiards">Billiards / Ball Pit</option>
+                <option value="orbital">Gravitational N-Body</option>
+                <option value="spring">Coupled Spring Chain</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="integratorSelect">Integrator Solver:</label>
+            <select id="integratorSelect">
+                <option value="euler">Euler-Cromer (First-Order Symplectic)</option>
+                <option value="verlet">Velocity Verlet (Second-Order)</option>
+            </select>
+        </div>
+        <button id="resetBtn">Reset Scene</button>
+        <button id="pauseBtn">Pause</button>
+       <button id="benchmarkBtn" style="background-color: #10b981;">Run Performance Test</button>
+
+        
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="physicsCanvas" width="960" height="540"></canvas>
+    </div>
+
+    <!-- The type="module" is critical for ES6 imports to function in the browser -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>
