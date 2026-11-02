@@ -17,3 +17,6 @@ I was able to run the simulation all the way up to 100 bodies bofre my FPS start
 | 50     | 0.058          | 0.126         | 60.0    |
 | 100    | 0.141          | 0.143         | 60.0    |
 | 200    | 0.329          | 0.198         | 58.8    |
+
+my live link is 
+https://byow1-creator.github.io/phys311/labs/Lab09/
