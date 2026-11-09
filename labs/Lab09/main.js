@@ -243,6 +243,12 @@ function loop(timestamp) {
   requestAnimationFrame(loop);
 }
 
+
+
+
+
+
+
 // 4. Interactive Event Listeners
 sceneSelect.addEventListener("change", () => {
   isProfiling = false; // Kill benchmark cycle if user changes scene manually

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab 10 - Interactive Simulation</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="dashboard">
+        <div class="control-group">
+            <label for="sceneSelect">Simulation Scene:</label>
+            <select id="sceneSelect">
+                <option value="billiards">Billiards / Ball Pit</option>
+                <option value="orbital">Gravitational N-Body</option>
+                <option value="spring">Coupled Spring Chain</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="integratorSelect">Integrator Solver:</label>
+            <select id="integratorSelect">
+                <option value="euler">Euler-Cromer (First-Order Symplectic)</option>
+                <option value="verlet">Velocity Verlet (Second-Order)</option>
+            </select>
+        </div>
+          <div class="control-group">
+    <label for="grav">Gravity: <span id="gravVal">9.81</span> m/s²</label>
+    <input type="range" id="grav" min="0" max="25" step="0.1" value="9.81">
+  </div>
+
+  <div class="control-group">
+    <label for="rest">Restitution: <span id="restVal">0.90</span></label>
+    <input type="range" id="rest" min="0" max="1" step="0.01" value="0.90">
+  </div>
+
+
+        
+        <!-- Explicitly adding the labeled Step button here -->
+<button id="stepBtn">Step</button>
+<button id="resetBtn">Reset Scene</button>
+<button id="pauseBtn">Pause</button>
+<button id="benchmarkBtn">Performance Test</button>
+
+
+        
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="physicsCanvas" width="960" height="540"></canvas>
+    </div>
+
+    <!-- The type="module" is critical for ES6 imports to function in the browser -->
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
