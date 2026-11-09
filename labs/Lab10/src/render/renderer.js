@@ -13,21 +13,19 @@ export class Renderer {
     this.camera = camera;
   }
 
+
   draw(world) {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // --- STEP A: RENDER SPRING LINES FIRST (SO THEY SIT UNDER THE BODIES) ---
-    this.ctx.strokeStyle = "#cbd5e1";
-    this.ctx.lineWidth = 2;
-    
-    for (const b of world.bodies) {
-      // If a body has a specific structural spring attachment pattern, or we scan 
-      // sequentially for linked bodies in active spring chain states:
-    }
-    
-    // Explicitly check if we are in the spring scene by reading the active body relationships
-    // This dynamically draws connection links matching the Spring Force logic in main.js
+    // Read toggle checkbox states from the DOM safely
+    const useColor = document.getElementById("toggleColor")?.checked ?? true;
+    const showVel = document.getElementById("toggleVel")?.checked ?? true;
+    const showContacts = document.getElementById("toggleContacts")?.checked ?? true;
+
+    // --- STEP A: RENDER SPRING LINES FIRST ---
     if (world.bodies.length > 0 && world.forces.some(f => typeof f.potentialEnergy === "function" && !f.G)) {
+      this.ctx.strokeStyle = "#cbd5e1";
+      this.ctx.lineWidth = 2;
       this.ctx.beginPath();
       for (let i = 0; i < world.bodies.length - 1; i++) {
         const p1 = this.camera.toScreen(world.bodies[i].pos);
@@ -38,38 +36,47 @@ export class Renderer {
       this.ctx.stroke();
     }
 
-        // --- STEP B: RENDER BODIES ---
+
+    // --- STEP C: RENDER BODIES ---
     for (const b of world.bodies) {
       const screenPos = this.camera.toScreen(b.pos);
       const speed = b.vel.len();
 
-      // 1. DYNAMIC COLORING: Dynamically color moving bodies by their kinetic speed profile
-      // Keep fixed/anchor bodies a neutral color, but shade active particles dynamically
-      this.ctx.fillStyle = b.fixed ? b.color : speedColor(speed);
+      // Dynamic color if enabled, otherwise use the body's default color
+      this.ctx.fillStyle = (b.fixed || !useColor) ? b.color : speedColor(speed);
       
       this.ctx.beginPath();
-      this.ctx.arc(
-        screenPos.x,
-        screenPos.y,
-        b.radius * this.camera.scale,
-        0,
-        2 * Math.PI
-      );
+      this.ctx.arc(screenPos.x, screenPos.y, b.radius * this.camera.scale, 0, 2 * Math.PI);
       this.ctx.fill();
 
-      // 2. VELOCITY ARROWS: Draw vector lines emerging from body along velocity direction
-      if (!b.fixed && speed > 0.1) {
-        // Find where the arrow tip should land in physics meters (scaled down slightly by 0.15 for legibility)
+      // Velocity Arrows if enabled
+      if (showVel && !b.fixed && speed > 0.1) {
         const arrowTipWorld = b.pos.add(b.vel.mul(0.15));
         const arrowTipScreen = this.camera.toScreen(arrowTipWorld);
 
-        this.ctx.strokeStyle = "#ff0055"; // Bright contrast color for vectors
+        this.ctx.strokeStyle = "#ff0055"; 
         this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
         this.ctx.moveTo(screenPos.x, screenPos.y);
         this.ctx.lineTo(arrowTipScreen.x, arrowTipScreen.y);
         this.ctx.stroke();
       }
+    }
+    if (showContacts && world.contacts) {
+      world.contacts.forEach(c => {
+        const screenPos = this.camera.toScreen(c.pos);
+        const percent = c.age / c.maxAge;
+        const radius = 4 + percent * 12; // Growing ring circle ripple
+        const alpha = 1 - percent;       // Smoothly fade out opacity
+
+        this.ctx.save();
+        this.ctx.strokeStyle = `rgba(236, 72, 153, ${alpha})`; // Shocking neon pink flash ring
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(screenPos.x, screenPos.y, radius, 0, 2 * Math.PI);
+        this.ctx.stroke();
+        this.ctx.restore();
+      });
     }
   }
 }

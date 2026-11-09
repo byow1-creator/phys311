@@ -16,7 +16,12 @@ export class Body {
     this.fixed   = fixed;
     this.color   = color;
     this.tag     = tag;
+  
+    this.trailHistory = [];
   }
+
+  clearForce()      { this.force.set(0, 0); }
+
 
   clearForce()      { this.force.set(0, 0); }
   applyForce(F)     { this.force.addTo(F); }

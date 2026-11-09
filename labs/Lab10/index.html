@@ -14,11 +14,13 @@
                 <option value="billiards">Billiards / Ball Pit</option>
                 <option value="orbital">Gravitational N-Body</option>
                 <option value="spring">Coupled Spring Chain</option>
+                  <option value="gas">Thermodynamic Gas Box</option>
             </select>
         </div>
         <div class="control-group">
             <label for="integratorSelect">Integrator Solver:</label>
             <select id="integratorSelect">
+                <option value="euler">Explicit Euler</option>
                 <option value="euler">Euler-Cromer (First-Order Symplectic)</option>
                 <option value="verlet">Velocity Verlet (Second-Order)</option>
             </select>
@@ -26,6 +28,9 @@
           <div class="control-group">
     <label for="grav">Gravity: <span id="gravVal">9.81</span> m/s²</label>
     <input type="range" id="grav" min="0" max="25" step="0.1" value="9.81">
+    <label for="centralMass">Central Mass:</label>
+  <input type="range" id="centralMass" min="10" max="2000" step="10" value="55">
+  <span id="centralMassVal">55</span>
   </div>
 
   <div class="control-group">
@@ -44,6 +49,20 @@
 
         
     </div>
+ <div id="visualToggles" style="margin-bottom: 15px; display: flex; gap: 20px; color: #d2ff1e; font-family: monospace; font-size: 14px;">
+  <label><input type="checkbox" id="toggleColor" checked> Speed Color</label>
+  <label><input type="checkbox" id="toggleVel" checked> Velocity Vectors</label>
+  <label><input type="checkbox" id="toggleContacts" checked> Collision Flashes</label>
+ </div>
+
+ <div id="gasControls" style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; color: #00ff66; font-family: monospace; font-size: 13px;">
+   <label style="color:#fafafa;">Gas Actions:</label>
+   <button id="addHotBtn" style="background:#ef4444; color:white; border:none; padding:4px 8px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Hot Gas (10 particles)</button>
+   <button id="addColdBtn" style="background:#3b82f6; color:white; border:none; padding:4px 8px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Cold Gas (10 particles)</button>
+   <button id="insulateBtn" style="background:#555; color:white; border:none; padding:4px 8px; cursor:pointer; border-radius:3px;">Make Walls Perfect (Restitution = 1.0)</button>
+ </div>
+
+
 
     <div id="canvasContainer">
         <canvas id="physicsCanvas" width="960" height="540"></canvas>

@@ -11,6 +11,10 @@ export class World {
     this.bounds = opts.bounds ?? null;
     this.time = 0;
     this.restitution = opts.restitution ?? 0.9;
+     this.contacts = [];
+  }
+
+  add(body) {
   }
 
   add(body) {
@@ -34,6 +38,12 @@ export class World {
   }
 
   step(dt) {
+     if (this.contacts) {
+      this.contacts = this.contacts.filter(c => {
+        c.age += dt;
+        return c.age < c.maxAge;
+      });
+    }
     // Let the integrator manage forces sequence clearing and calling loops internally
     this.integrator.step(this, dt);
 

@@ -19,9 +19,15 @@ export const EulerCromer = {
       b.vel.y += b.acc.y * dt;
       b.pos.x += b.vel.x * dt;
       b.pos.y += b.vel.y * dt;
+      if (!b.fixed) {
+        b.trailHistory.push(b.pos.clone());
+        if (b.trailHistory.length > 15) b.trailHistory.shift(); // Keep last 15 frames
+      }
     }
   }
 };
+
+
 
 export const VelocityVerlet = {
   name: 'verlet',
@@ -44,8 +50,37 @@ export const VelocityVerlet = {
       if (b.fixed) return;
       b.vel.x = half[i][0] + 0.5 * b.acc.x * dt;
       b.vel.y = half[i][1] + 0.5 * b.acc.y * dt;
+      b.trailHistory.push(b.pos.clone());
+      if (b.trailHistory.length > 15) b.trailHistory.shift();
     });
   }
 };
 
-export const INTEGRATORS = { ec: EulerCromer, verlet: VelocityVerlet };
+export function explicitEuler(bodies, dt, forces) {
+    // 1. Clear forces & accumulate
+    bodies.forEach(b => {
+        b.force = new Vec2(0, 0);
+        forces.forEach(f => f.apply(b));
+    });
+
+    // 2. Explicit Euler Update Step
+    bodies.forEach(b => {
+        if (b.invMass === 0) return; // skip static boundaries
+
+        // x_new = x_old + v_old * dt (Uses current velocity before updating it!)
+        b.pos = b.pos.add(b.vel.scale(dt));
+
+        // v_new = v_old + a * dt
+        const accel = b.force.scale(b.invMass);
+        b.vel = b.vel.add(accel.scale(dt));
+        if (!b.trailHistory) b.trailHistory = [];
+        b.trailHistory.push(b.pos.clone());
+        if (b.trailHistory.length > 15) b.trailHistory.shift();
+    });
+}
+
+export function velocityVerlet(bodies, dt, forces) {
+    // ... (leave your original velocityVerlet function body alone here) ...
+}
+
+export const INTEGRATORS = { ec: EulerCromer, euler: explicitEuler, verlet: VelocityVerlet };

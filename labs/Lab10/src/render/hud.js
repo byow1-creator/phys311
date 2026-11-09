@@ -1,4 +1,6 @@
-export function drawHUD(ctx, world, e0, p0, fps, tPhysics, tRender) {
+import { Vec2 } from "../engine/Vec2.js";
+
+export function drawHUD(ctx, world, e0, p0, fps, tPhysics, tRender, mouseWorldPos) {
   const currentEnergy = world.totalEnergy();
   const currentMomentum = world.totalMomentum();
 
@@ -29,9 +31,9 @@ export function drawHUD(ctx, world, e0, p0, fps, tPhysics, tRender) {
   ctx.font = "13px monospace";
 
   if (Math.abs(energyDriftPercent) > 1.0) {
-    ctx.fillStyle = "#dc3545";
+    ctx.fillStyle = "#dc3545"; // Warning Red if energy drifts heavily
   } else {
-    ctx.fillStyle = "#2d3b45";
+    ctx.fillStyle = "#060607"; // Matching your theme's neon yellow/green text color
   }
 
   lines.forEach((line, index) => {

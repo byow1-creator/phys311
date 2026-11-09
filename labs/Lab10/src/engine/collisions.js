@@ -12,7 +12,21 @@ export function resolveCollisions(world) {
       resolveWalls(b, world.bounds, world.restitution);
     }
   }
+ for (let i = 0; i < bs.length; i++) {
+    for (let j = i + 1; j < bs.length; j++) {
+      // Check for overlap before resolving to draw a pink shockwave marker
+      const d = bs[j].pos.sub(bs[i].pos);
+      const dist = d.len();
+      const radiusSum = bs[i].radius + bs[j].radius;
+      
+      if (dist < radiusSum && dist > 1e-12 && world.contacts) {
+        const contactPos = bs[i].pos.add(d.mul(bs[i].radius / radiusSum));
+        world.contacts.push({ pos: contactPos, age: 0, maxAge: 0.15 });
+      }
 
+      resolvePair(bs[i], bs[j], world.restitution);
+    }
+  }
   // Resolve circle-to-circle overlaps
   for (let i = 0; i < bs.length; i++) {
     for (let j = i + 1; j < bs.length; j++) {

@@ -6,6 +6,8 @@ import { Camera } from "./render/camera.js";
 import { Renderer } from "./render/renderer.js";
 import { drawHUD } from "./render/hud.js";
 import { Vec2 } from "./engine/Vec2.js";
+import { setupKeyboardControls } from "./ui/Keyboard.js";
+
 
 // 1. Simulation Setup and UI Bindings
 const canvas = document.getElementById("physicsCanvas");
@@ -20,6 +22,8 @@ const gravValDisplay = document.getElementById("gravVal");
 const restSlider = document.getElementById("rest");
 const restValDisplay = document.getElementById("restVal");
 const stepBtn = document.getElementById("stepBtn");
+const centralMassSlider = document.getElementById("centralMass");
+const centralMassValDisplay = document.getElementById("centralMassVal");
 
 const camera = new Camera(30, canvas.width / 2, canvas.height / 2);
 const renderer = new Renderer(canvas, camera);
@@ -36,11 +40,20 @@ let tRender = 0;
 
 let activeGravityForce = null; 
 
+let centralBodyInstance = null; 
+
 const DT = 1 / 120;         // Clean, constant physics step size slice
 let acc = 0;                // Accumulated time tank tracking leftover delta
 let stepOnce = false;       // Handle single frame step clicks while paused
 let speed = 1.0;            // Speed scale: 0.25 = slow-mo, 1.0 = normal, 2.0 = fast-forward
 
+// --- CONSOLIDATED WIDGET/SIMULATION STATES ---
+const simState = {
+  isPaused: false,
+  stepOnce: false,
+  speed: 1.0,
+  isProfiling: false
+};
 
 // === INTERACTIVE CONTROL STATE TRACKERS ===
 let mouseWorldPos = null;   
@@ -85,7 +98,18 @@ function initScene() {
     world.bounds = null; 
     world.addForce(new NewtonGravity(4, 0.1));
 
-    world.add(new Body({ pos: new Vec2(0, 0), vel: new Vec2(0, 0), mass: 55, radius: 0.8, fixed: true, color: "#f59e0b" }));
+    const initialCentralMass = centralMassSlider ? parseFloat(centralMassSlider.value) : 55;
+
+    centralBodyInstance = new Body({ 
+      pos: new Vec2(0, 0), 
+      vel: new Vec2(0, 0), 
+      mass: initialCentralMass, 
+      radius: 0.8, 
+      fixed: true, 
+      color: "#f59e0b" 
+    });
+    
+    world.add(centralBodyInstance);
     
     world.add(new Body({ pos: new Vec2(1, 6),  vel: new Vec2(-5.0, 0),   mass: .2, radius: 0.4,  color: "#3b82f6" }));
     world.add(new Body({ pos: new Vec2(2, -7), vel: new Vec2(4.5,  0),   mass: .1, radius: 0.3,  color: "#10b981" }));
@@ -137,6 +161,39 @@ function initScene() {
       }));
     }
   }
+ else if (sceneType === "gas") {
+    // Rigid insulating box boundaries
+    world.bounds = { xMin: -12, xMax: 12, yMin: -7, yMax: 7 };
+    world.addForce(new Gravity(0)); // Zero-G environment for an ideal gas chamber
+
+    // Scenario: Start with a non-equilibrium state
+    // Top Left: 15 Hot, lightweight, high-energy particles (Red)
+    for (let i = 0; i < 15; i++) {
+      world.add(new Body({
+        pos: new Vec2(-8 + Math.random() * 4, 2 + Math.random() * 4),
+        vel: new Vec2((Math.random() - 0.5) * 25, (Math.random() - 0.5) * 25), // Fast speed
+        mass: 0.5, // Light
+        radius: 0.25,
+        color: "#ef4444",
+        tag: "gas-hot"
+      }));
+    }
+
+    // Bottom Right: 15 Cold, massive, slow-energy particles (Blue)
+    for (let i = 0; i < 15; i++) {
+      world.add(new Body({
+        pos: new Vec2(4 + Math.random() * 4, -5 + Math.random() * 4),
+        vel: new Vec2((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3), // Sluggish speed
+        mass: 2.0, // Heavy
+        radius: 0.45,
+        color: "#3b82f6",
+        tag: "gas-cold"
+      }));
+    }
+  }
+
+
+
   world.addForce(mouseSpringInstance);
 
   // Re-baseline diagnostics and reset time states cleanly
@@ -144,8 +201,10 @@ function initScene() {
   p0 = world.totalMomentum();
   acc = 0;
   lastTime = 0;
+    world.bodies.forEach(b => {
+    b.trailHistory = [];
+  });
 }
-
 
 const benchmarkScales = [10, 25, 50, 100, 200];
 let currentScaleIndex = 0;
@@ -201,12 +260,12 @@ function loop(timestamp) {
   if (frameTime > 0.25) frameTime = 0.25; 
   if (frameTime > 0) fps = 0.9 * fps + 0.1 * (1 / frameTime);
 
-  // SECTION 3.1: Accumulate time based on simulation play state
-  if (!isPaused) {
-    acc += frameTime * speed; 
-  } else if (stepOnce) {
+  // SECTION 3.1: Accumulate time based on simulation play state (Updated for simState)
+  if (!simState.isPaused) {
+    acc += frameTime * simState.speed; 
+  } else if (simState.stepOnce) {
     acc += DT;  
-    stepOnce = false; // Instantly consume the single-step request
+    simState.stepOnce = false; // Instantly consume the single-frame step clicks while paused
   }
 
   const t0 = performance.now();
@@ -229,7 +288,27 @@ function loop(timestamp) {
   const t1 = performance.now();
   renderer.draw(world);
   tRender = performance.now() - t1;
+  const ctx = renderer.ctx; // Grab the canvas drawing context
+  
+  if (aimStart && mouseWorldPos) {
+    // 1. Calculate the intended velocity vector exactly how you do on pointerup
+    const launchVelocity = aimStart.sub(mouseWorldPos).mul(2.0);
+    
+    // 2. Pass your engine assets to draw the projected neon path lines
+    drawTrajectoryPreview(ctx, world, camera, aimStart, launchVelocity);
 
+    // 3. Optional: Draw a physical rubber band string connecting the anchor to your mouse pointer
+    const screenStart = camera.toScreen(aimStart);
+    const screenMouse = camera.toScreen(mouseWorldPos);
+    ctx.save();
+    ctx.strokeStyle = "rgba(236, 72, 153, 0.5)"; // Match your pink planet preview color
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(screenStart.x, screenStart.y);
+    ctx.lineTo(screenMouse.x, screenMouse.y);
+    ctx.stroke();
+    ctx.restore();
+  }
   if (mouseWorldPos) {
     const screenPos = camera.toScreen(mouseWorldPos);
     const ctx = renderer.ctx;
@@ -253,7 +332,7 @@ function loop(timestamp) {
 
   drawHUD(renderer.ctx, world, e0, p0, fps, tPhysics, tRender, mouseWorldPos);
 
-  if (isProfiling && !isPaused && currentScaleIndex < benchmarkScales.length) {
+  if (simState.isProfiling && !simState.isPaused && currentScaleIndex < benchmarkScales.length) {
     frameCounter++;
     physicsTimeAccumulator += tPhysics;
     renderTimeAccumulator += tRender;
@@ -271,9 +350,9 @@ function loop(timestamp) {
       if (currentScaleIndex < benchmarkScales.length) {
         initBenchmarkScene(benchmarkScales[currentScaleIndex]);
       } else {
-        isProfiling = false;
-        isPaused = true;
-        exportBenchmarkToCSV();
+        simState.isProfiling = false;
+        simState.isPaused = true;
+        exportBenchmarkToCSV(); // Ensure this helper exists in your code bank if profiling completes
       }
     }
   }
@@ -281,12 +360,19 @@ function loop(timestamp) {
   requestAnimationFrame(loop);
 }
 
+
 function eventToWorld(event, canvas, camera) {
   const rect = canvas.getBoundingClientRect();
-  const px = (event.clientX - rect.left) * (canvas.width / rect.width);
-  const py = (event.clientY - rect.top ) * (canvas.height / rect.height);
+  
+  const clientX = event.clientX - rect.left;
+  const clientY = event.clientY - rect.top;
+  
+  const px = clientX * (canvas.width / rect.width);
+  const py = clientY * (canvas.height / rect.height);
+  
   return camera.toWorld(px, py);
 }
+
 
 // 4. Interactive Event Listeners
 sceneSelect.addEventListener("change", () => {
@@ -300,20 +386,27 @@ integratorSelect.addEventListener("change", () => {
 });
 
 resetBtn.addEventListener("click", () => {
-  isProfiling = false;
+  simState.isProfiling = false;
   initScene();
 });
 
 pauseBtn.addEventListener("click", () => {
-  isPaused = !isPaused;
-  pauseBtn.textContent = isPaused ? "Play" : "Pause";
+  simState.isPaused = !simState.isPaused;
+  pauseBtn.textContent = simState.isPaused ? "Play" : "Pause";
 });
+
 // SECTION 3.1: Trigger a single time slice advance when the Step button is clicked
 if (stepBtn) {
   stepBtn.addEventListener("click", () => {
-    if (isPaused) stepOnce = true;
+    if (simState.isPaused) simState.stepOnce = true;
   });
 }
+
+// --- INITIALIZE KEYBOARD SHORTCUTS CONTROLLER MODULE ---
+setupKeyboardControls(simState, initScene);
+
+// SECTION 3: Live parameter tuning with safe string-to-float parsing
+
 
 // SECTION 3: Live parameter tuning with safe string-to-float parsing
 if (gravSlider) {
@@ -339,6 +432,65 @@ if (restSlider) {
     }
   });
 }
+
+if (centralMassSlider) {
+  centralMassSlider.addEventListener("input", () => {
+    const m = parseFloat(centralMassSlider.value);
+    if (centralMassValDisplay) {
+      centralMassValDisplay.textContent = m.toFixed(0);
+    }
+    if (centralBodyInstance) {
+      centralBodyInstance.mass = m;
+      if (!centralBodyInstance.fixed) {
+        centralBodyInstance.invMass = 1 / m;
+      }
+    }
+  });
+}
+
+
+const addHotBtn = document.getElementById("addHotBtn");
+const addColdBtn = document.getElementById("addColdBtn");
+const insulateBtn = document.getElementById("insulateBtn");
+
+if (addHotBtn) {
+  addHotBtn.addEventListener("click", () => {
+    if (!world) return;
+    for (let i = 0; i < 10; i++) {
+      world.add(new Body({
+        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
+        vel: new Vec2((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30),
+        mass: 0.5,
+        radius: 0.25,
+        color: "#ef4444"
+      }));
+    }
+  });
+}
+
+if (addColdBtn) {
+  addColdBtn.addEventListener("click", () => {
+    if (!world) return;
+    for (let i = 0; i < 10; i++) {
+      world.add(new Body({
+        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
+        vel: new Vec2((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2),
+        mass: 2.0,
+        radius: 0.45,
+        color: "#3b82f6"
+      }));
+    }
+  });
+}
+
+if (insulateBtn) {
+  insulateBtn.addEventListener("click", () => {
+    if (world) world.restitution = 1.0;
+    if (restSlider) restSlider.value = "1.0";
+    if (restValDisplay) restValDisplay.textContent = "1.00";
+  });
+}
+
 
 benchmarkBtn.addEventListener("click", () => {
   capturedDataLog.length = 0; 
@@ -406,6 +558,58 @@ canvas.addEventListener("pointerup", () => {
   mouseSpringInstance.body = null;
   mouseSpringInstance.target = null;
 });
+
+// === REPLACE THE FUNCTION AT THE VERY BOTTOM OF MAIN.JS WITH THIS ===
+function drawTrajectoryPreview(ctx, world, camera, startPos, launchVel) {
+  let virtualPos = new Vec2(startPos.x, startPos.y);
+  let virtualVel = new Vec2(launchVel.x, launchVel.y);
+  let dummyBody = { pos: virtualPos, vel: virtualVel, mass: 0.2 };
+  
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = "rgba(59, 130, 246, 0.7)"; 
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]); // Clean dashed layout line
+  
+  const totalSteps = 60; 
+  const dt = 1 / 60;     
+  
+  for (let i = 0; i < totalSteps; i++) {
+    world.forces.forEach(force => {
+      // Check for your gravity force module matching your class constructor name
+      if (force.constructor.name === "NewtonGravity") {
+        world.bodies.forEach(b => {
+          if (b.fixed) { 
+            const d = b.pos.sub(dummyBody.pos);
+            const r2 = d.lensq();
+            if (r2 > 0.01) {
+              const r = Math.sqrt(r2);
+              const forceMag = (force.G * dummyBody.mass * b.mass) / (r2 * r);
+              
+              // FIXED: Replaced .scale() with .mul() to align with your Vec2 class definition
+              const acc = d.mul(forceMag / dummyBody.mass);
+              dummyBody.vel = dummyBody.vel.add(acc.mul(dt));
+            }
+          }
+        });
+      }
+    });
+
+    // FIXED: Replaced .scale() with .mul() here too
+    dummyBody.pos = dummyBody.pos.add(dummyBody.vel.mul(dt));
+    const screenCoord = camera.toScreen(dummyBody.pos);
+    
+    if (i === 0) {
+      ctx.moveTo(screenCoord.x, screenCoord.y);
+    } else {
+      ctx.lineTo(screenCoord.x, screenCoord.y);
+    }
+  }
+  
+  ctx.stroke();
+  ctx.restore();
+}
+
 
 // --- IGNITION ---
 initScene();
