@@ -230,7 +230,28 @@ function loop(timestamp) {
   renderer.draw(world);
   tRender = performance.now() - t1;
 
-  drawHUD(renderer.ctx, world, e0, p0, fps, tPhysics, tRender);
+  if (mouseWorldPos) {
+    const screenPos = camera.toScreen(mouseWorldPos);
+    const ctx = renderer.ctx;
+    const size = 10; // Crosshair arm length in pixels
+
+    ctx.strokeStyle = "#00ff66"; // Neon green to match your theme elements
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    
+    // Horizontal line
+    ctx.moveTo(screenPos.x - size, screenPos.y);
+    ctx.lineTo(screenPos.x + size, screenPos.y);
+    
+    // Vertical line
+    ctx.moveTo(screenPos.x, screenPos.y - size);
+    ctx.lineTo(screenPos.x, screenPos.y + size);
+    
+    
+    ctx.stroke();
+  }
+
+  drawHUD(renderer.ctx, world, e0, p0, fps, tPhysics, tRender, mouseWorldPos);
 
   if (isProfiling && !isPaused && currentScaleIndex < benchmarkScales.length) {
     frameCounter++;
@@ -380,7 +401,7 @@ canvas.addEventListener("pointerup", () => {
   }
 
   grabbedBody = null;
-  mouseWorldPos = null;
+  //mouseWorldPos = null;
   aimStart = null;
   mouseSpringInstance.body = null;
   mouseSpringInstance.target = null;

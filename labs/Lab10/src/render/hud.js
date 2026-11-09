@@ -18,6 +18,14 @@ export function drawHUD(ctx, world, e0, p0, fps, tPhysics, tRender) {
     `t_render      = ${tRender.toFixed(2)} ms`
   ];
 
+  if (mouseWorldPos) {
+    lines.push(`mouse.x       = ${mouseWorldPos.x.toFixed(2)} m`);
+    lines.push(`mouse.y       = ${mouseWorldPos.y.toFixed(2)} m`);
+  } else {
+    lines.push(`mouse.x       = null`);
+    lines.push(`mouse.y       = null`);
+  }
+
   ctx.font = "13px monospace";
 
   if (Math.abs(energyDriftPercent) > 1.0) {
