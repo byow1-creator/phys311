@@ -25,6 +25,53 @@ const stepBtn = document.getElementById("stepBtn");
 const centralMassSlider = document.getElementById("centralMass");
 const centralMassValDisplay = document.getElementById("centralMassVal");
 
+const addHotBtn = document.getElementById("addHotBtn");
+const addColdBtn = document.getElementById("addColdBtn");
+const insulateBtn = document.getElementById("insulateBtn");
+
+if (addHotBtn) {
+  addHotBtn.addEventListener("click", () => {
+    if (!world) return;
+    for (let i = 0; i < 10; i++) {
+      world.add(new Body({
+        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
+        vel: new Vec2((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30),
+        mass: 0.5,
+        radius: 0.25,
+        color: "#ef4444"
+      }));
+    }
+    e0 = world.totalEnergy(); // Re-baseline initial energy after injecting hot gas
+  });
+}
+
+if (addColdBtn) {
+  addColdBtn.addEventListener("click", () => {
+    if (!world) return;
+    for (let i = 0; i < 10; i++) {
+      world.add(new Body({
+        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
+        vel: new Vec2((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2),
+        mass: 2.0,
+        radius: 0.45,
+        color: "#3b82f6"
+      }));
+    }
+    e0 = world.totalEnergy(); // Re-baseline initial energy after injecting cold gas
+  });
+}
+
+if (insulateBtn) {
+  insulateBtn.addEventListener("click", () => {
+    if (world) world.restitution = 1.0;
+    if (restSlider) restSlider.value = "1.0";
+    if (restValDisplay) restValDisplay.textContent = "1.00";
+    e0 = world.totalEnergy(); // Re-baseline initial energy when changing wall insulation properties
+  });
+}
+
+
+
 const camera = new Camera(30, canvas.width / 2, canvas.height / 2);
 const renderer = new Renderer(canvas, camera);
 
@@ -178,7 +225,7 @@ function initScene() {
         tag: "gas-hot"
       }));
     }
-
+    e0 = world.totalEnergy();
     // Bottom Right: 15 Cold, massive, slow-energy particles (Blue)
     for (let i = 0; i < 15; i++) {
       world.add(new Body({
@@ -190,6 +237,7 @@ function initScene() {
         tag: "gas-cold"
       }));
     }
+    e0 = world.totalEnergy()
   }
 
 
@@ -449,47 +497,7 @@ if (centralMassSlider) {
 }
 
 
-const addHotBtn = document.getElementById("addHotBtn");
-const addColdBtn = document.getElementById("addColdBtn");
-const insulateBtn = document.getElementById("insulateBtn");
 
-if (addHotBtn) {
-  addHotBtn.addEventListener("click", () => {
-    if (!world) return;
-    for (let i = 0; i < 10; i++) {
-      world.add(new Body({
-        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
-        vel: new Vec2((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30),
-        mass: 0.5,
-        radius: 0.25,
-        color: "#ef4444"
-      }));
-    }
-  });
-}
-
-if (addColdBtn) {
-  addColdBtn.addEventListener("click", () => {
-    if (!world) return;
-    for (let i = 0; i < 10; i++) {
-      world.add(new Body({
-        pos: new Vec2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 8),
-        vel: new Vec2((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2),
-        mass: 2.0,
-        radius: 0.45,
-        color: "#3b82f6"
-      }));
-    }
-  });
-}
-
-if (insulateBtn) {
-  insulateBtn.addEventListener("click", () => {
-    if (world) world.restitution = 1.0;
-    if (restSlider) restSlider.value = "1.0";
-    if (restValDisplay) restValDisplay.textContent = "1.00";
-  });
-}
 
 
 benchmarkBtn.addEventListener("click", () => {

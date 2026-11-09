@@ -54,14 +54,27 @@
   <label><input type="checkbox" id="toggleVel" checked> Velocity Vectors</label>
   <label><input type="checkbox" id="toggleContacts" checked> Collision Flashes</label>
  </div>
+<div id="gasControls" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px; padding: 12px; background: #1e1e24; border: 1px solid #333; border-radius: 6px; font-family: monospace;">
+  
+  <!-- Row 1: Action Buttons -->
+  <div style="display: flex; gap: 15px; align-items: center; color: #00ff66; font-size: 13px;">
+    <span style="color:#fafafa; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Gas Box Controls:</span>
+    <button id="addHotBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Hot Gas (10 particles)</button>
+    <button id="addColdBtn" style="background:#3b82f6; color:white; border:none; padding:5px 10px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Cold Gas (10 particles)</button>
+    <button id="insulateBtn" style="background:#555; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:3px;">Make Walls Perfect (Restitution = 1.0)</button>
+  </div>
 
- <div id="gasControls" style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; color: #00ff66; font-family: monospace; font-size: 13px;">
-   <label style="color:#fafafa;">Gas Actions:</label>
-   <button id="addHotBtn" style="background:#ef4444; color:white; border:none; padding:4px 8px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Hot Gas (10 particles)</button>
-   <button id="addColdBtn" style="background:#3b82f6; color:white; border:none; padding:4px 8px; cursor:pointer; font-weight:bold; border-radius:3px;">+ Inject Cold Gas (10 particles)</button>
-   <button id="insulateBtn" style="background:#555; color:white; border:none; padding:4px 8px; cursor:pointer; border-radius:3px;">Make Walls Perfect (Restitution = 1.0)</button>
- </div>
-
+  <!-- Row 2: Live Explorable Instructions Panel -->
+  <div id="gasInstructions" style="color: #cbd5e1; font-size: 12px; line-height: 1.5; border-top: 1px solid #334155; padding-top: 8px; margin-top: 4px;">
+    <strong style="color: #d2ff1e;">🔬 HOW TO EXPLORE THERMAL EQUILIBRIUM:</strong>
+    <ul style="margin: 5px 0 0 18px; padding: 0; list-style-type: square;">
+      <li>Select the <span style="color:#00ff66;">"Thermodynamic Gas Box"</span> from the scene menu.</li>
+      <li><strong>Observe:</strong> The simulation starts in a non-equilibrium state with fast, light <span style="color:#ef4444;">Hot Gas (Red)</span> isolated from slow, massive <span style="color:#3b82f6;">Cold Gas (Blue)</span>.</li>
+      <li>Watch how the colors shift over time as collisions transfer kinetic energy, relaxing into a uniform **equilibrium temperature**.</li>
+      <li>Use the injection buttons to disrupt equilibrium and watch the system thermalize again!</li>
+    </ul>
+  </div>
+</div>
 
 
     <div id="canvasContainer">
