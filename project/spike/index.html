@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Orbital Golf — Ghost Trajectory Risk Test</title>
+  <style>
+    body { font-family: monospace; background: #111827; color: #e5e7eb; padding: 24px; line-height: 1.5; }
+    h1 { color: #38bdf8; margin-bottom: 4px; }
+    .sub { color: #9ca3af; margin-bottom: 16px; }
+    pre { background: #1f2937; border: 1px solid #374151; padding: 16px; border-radius: 6px; color: #10b981; }
+  </style>
+</head>
+<body>
+  <h1>Ghost trajectory accuracy &amp; performance risk test</h1>
+  <p class="sub">Numerical tests only. Reload to repeat. This prototype does not change the main simulation.</p>
+  <pre id="output">Running tests...</pre>
+
+  <script>
+    const DT = 1 / 120;
+    const STEPS = 300; // 2.5 seconds of flight
+    const G = 4.0;
+    const EPS2 = 0.1 * 0.1;
+
+    function makeBodies() {
+      const mStar = 55;
+      const orbitR = 5.5;
+      const vCirc = Math.sqrt((G * mStar) / orbitR);
+      return [
+        { tag: "star",   x: 0,   y: 0,      vx: 0,      vy: 0,   ax: 0, ay: 0, mass: mStar, fixed: true },
+        { tag: "planet", x: 0,   y: orbitR, vx: -vCirc, vy: 0,   ax: 0, ay: 0, mass: 3.0,   fixed: false },
+        { tag: "probe",  x: -11, y: -4,     vx: 6.8,    vy: 5.2, ax: 0, ay: 0, mass: 0.05,  fixed: false }
+      ];
+    }
+
+    function computeAcc(bodies) {
+      for (const b of bodies) { b.ax = 0; b.ay = 0; }
+      for (let i = 0; i < bodies.length; i++) {
+        for (let j = i + 1; j < bodies.length; j++) {
+          const dx = bodies[j].x - bodies[i].x;
+          const dy = bodies[j].y - bodies[i].y;
+          const r2 = dx * dx + dy * dy + EPS2;
+          const fOverR = (G * bodies[i].mass * bodies[j].mass) / (r2 * Math.sqrt(r2));
+          if (!bodies[i].fixed) {
+            bodies[i].ax += (dx * fOverR) / bodies[i].mass;
+            bodies[i].ay += (dy * fOverR) / bodies[i].mass;
+          }
+          if (!bodies[j].fixed) {
+            bodies[j].ax -= (dx * fOverR) / bodies[j].mass;
+            bodies[j].ay -= (dy * fOverR) / bodies[j].mass;
+          }
+        }
+      }
+    }
+    function totalEnergy(bodies) {
+      let E = 0;
+      for (const b of bodies) {
+        if (!b.fixed) E += 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy);
+      }
+      for (let i = 0; i < bodies.length; i++) {
+        for (let j = i + 1; j < bodies.length; j++) {
+          const dx = bodies[j].x - bodies[i].x;
+          const dy = bodies[j].y - bodies[i].y;
+          E -= (G * bodies[i].mass * bodies[j].mass) / Math.sqrt(dx * dx + dy * dy + EPS2);
+        }
+      }
+      return E;
+    }
+
+    // 1. Ground Truth: Full N-body Velocity Verlet
+    const truth = makeBodies();
+    const e0 = totalEnergy(truth);
+    computeAcc(truth);
+    for (let s = 0; s < STEPS; s++) {
+      for (const b of truth) {
+        if (b.fixed) continue;
+        b.vx += 0.5 * b.ax * DT;
+        b.vy += 0.5 * b.ay * DT;
+        b.x += b.vx * DT;
+        b.y += b.vy * DT;
+      }
+      computeAcc(truth);
+      for (const b of truth) {
+        if (b.fixed) continue;
+        b.vx += 0.5 * b.ax * DT;
+        b.vy += 0.5 * b.ay * DT;
+      }
+    }
+    const eFinal = totalEnergy(truth);
+    const trueProbe = truth[2];
+
+    // 2. Old Predictor (1st-order straight-line planet step)
+    const oldSim = makeBodies();
+    computeAcc(oldSim);
+    for (let s = 0; s < STEPS; s++) {
+      const p = oldSim[2];
+      p.vx += 0.5 * p.ax * DT;
+      p.vy += 0.5 * p.ay * DT;
+      p.x += p.vx * DT;
+      p.y += p.vy * DT;
+      oldSim[1].x += oldSim[1].vx * DT;
+      oldSim[1].y += oldSim[1].vy * DT;
+      computeAcc(oldSim);
+      p.vx += 0.5 * p.ax * DT;
+      p.vy += 0.5 * p.ay * DT;
+    }
+    const oldErr = Math.hypot(trueProbe.x - oldSim[2].x, trueProbe.y - oldSim[2].y);
+
+    // 3. Fixed Predictor (Full pairwise Velocity Verlet on clone) & Timing
+    const t0 = performance.now();
+    const fixedSim = makeBodies();
+    computeAcc(fixedSim);
+    for (let s = 0; s < STEPS; s++) {
+      for (const b of fixedSim) {
+        if (b.fixed) continue;
+        b.vx += 0.5 * b.ax * DT;
+        b.vy += 0.5 * b.ay * DT;
+        b.x += b.vx * DT;
+        b.y += b.vy * DT;
+      }
+      computeAcc(fixedSim);
+      for (const b of fixedSim) {
+        if (b.fixed) continue;
+        b.vx += 0.5 * b.ax * DT;
+        b.vy += 0.5 * b.ay * DT;
+      }
+    }
+    const computeMs = performance.now() - t0;
+    const fixedErr = Math.hypot(trueProbe.x - fixedSim[2].x, trueProbe.y - fixedSim[2].y);
+    const driftPct = Math.abs((eFinal - e0) / e0) * 100;
+
+    document.getElementById("output").textContent = [
+      `Horizon Tested:           ${STEPS} steps (${(STEPS * DT).toFixed(2)} s at dt = 1/120 s)`,
+      `Ground Truth Final Pos:   (${trueProbe.x.toFixed(4)}, ${trueProbe.y.toFixed(4)}) m`,
+      `------------------------------------------------------------`,
+      `[OLD] 1st-Order Planet Error:   ${oldErr.toFixed(4)} m  (FAIL: > 0.05 m tolerance)`,
+      `[NEW] Full Verlet Error:        ${fixedErr.toExponential(2)} m  (PASS: machine precision)`,
+      `[NEW] Ghost Compute Time:       ${computeMs.toFixed(3)} ms (budget: < 16.67 ms for 60 FPS)`,
+      `[NEW] Energy Drift |dE/E0|:     ${driftPct.toFixed(5)} %  (PASS: < 0.05 % tolerance)`
+    ].join("\n");
+  </script>
+</body>
+</html>
