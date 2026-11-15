@@ -242,8 +242,12 @@ function loop(timestamp) {
 
   if (aimStart && mouseWorldPos && golfState.status === "AIMING") {
     const launchVelocity = aimStart.sub(mouseWorldPos).mul(2.0);
+    if (launchVelocity.len() > 22) {
+      launchVelocity.mulTo(22 / launchVelocity.len());
+    }
     const steps = previewStepsSlider ? parseInt(previewStepsSlider.value, 10) : 180;
     drawTrajectoryPreview(ctx, world, camera, aimStart, launchVelocity, steps);
+
 
     const screenStart = camera.toScreen(aimStart);
     const screenMouse = camera.toScreen(mouseWorldPos);
@@ -424,36 +428,54 @@ canvas.addEventListener("pointerup", () => {
   aimStart = null;
 });
 
-// === VELOCITY VERLET GHOST TRAJECTORY PREDICTOR ===
+// === EXACT VELOCITY VERLET GHOST TRAJECTORY PREDICTOR ===
 function drawTrajectoryPreview(ctx, world, camera, startPos, launchVel, totalSteps = 180) {
   const gravForce = world.forces.find(f => f.constructor.name === "NewtonGravity");
   const G = gravForce ? gravForce.G : 4.0;
   const eps2 = gravForce ? gravForce.eps ** 2 : 0.01;
 
-  // Clone massive bodies so preview does not mutate live world
+  // Clone all non-probe bodies (star + planets) with acceleration vectors
   const simBodies = world.bodies
     .filter(b => b.tag !== "probe")
     .map(b => ({
       pos: b.pos.clone(),
       vel: b.vel.clone(),
+      acc: new Vec2(0, 0),
       mass: b.mass,
       radius: b.radius,
       fixed: b.fixed
     }));
 
-  const probe = { pos: startPos.clone(), vel: launchVel.clone() };
+  // Add the virtual probe to the cloned system
+  const probe = {
+    pos: startPos.clone(),
+    vel: launchVel.clone(),
+    acc: new Vec2(0, 0),
+    mass: 0.05,
+    radius: 0.22,
+    fixed: false
+  };
+  simBodies.push(probe);
 
-  function getProbeAcc(pPos, bodies) {
-    let ax = 0, ay = 0;
-    for (const b of bodies) {
-      const dx = b.pos.x - pPos.x;
-      const dy = b.pos.y - pPos.y;
-      const r2 = dx * dx + dy * dy + eps2;
-      const factor = (G * b.mass) / (r2 * Math.sqrt(r2));
-      ax += dx * factor;
-      ay += dy * factor;
+  function computeAllAccelerations(bodies) {
+    for (const b of bodies) b.acc.set(0, 0);
+    for (let i = 0; i < bodies.length; i++) {
+      for (let j = i + 1; j < bodies.length; j++) {
+        const dx = bodies[j].pos.x - bodies[i].pos.x;
+        const dy = bodies[j].pos.y - bodies[i].pos.y;
+        const r2 = dx * dx + dy * dy + eps2;
+        const fOverR = (G * bodies[i].mass * bodies[j].mass) / (r2 * Math.sqrt(r2));
+
+        if (!bodies[i].fixed) {
+          bodies[i].acc.x += (dx * fOverR) / bodies[i].mass;
+          bodies[i].acc.y += (dy * fOverR) / bodies[i].mass;
+        }
+        if (!bodies[j].fixed) {
+          bodies[j].acc.x -= (dx * fOverR) / bodies[j].mass;
+          bodies[j].acc.y -= (dy * fOverR) / bodies[j].mass;
+        }
+      }
     }
-    return new Vec2(ax, ay);
   }
 
   ctx.save();
@@ -462,29 +484,33 @@ function drawTrajectoryPreview(ctx, world, camera, startPos, launchVel, totalSte
   ctx.lineWidth = 2;
   ctx.setLineDash([5, 5]);
 
-  let acc = getProbeAcc(probe.pos, simBodies);
+  computeAllAccelerations(simBodies);
   const startScreen = camera.toScreen(probe.pos);
   ctx.moveTo(startScreen.x, startScreen.y);
 
   for (let i = 0; i < totalSteps; i++) {
-    // Advance probe with Velocity Verlet at exact DT
-    const vHalf = probe.vel.add(acc.mul(0.5 * DT));
-    probe.pos.addTo(vHalf.mul(DT));
-
-    // Advance moving planets (1st-order step on clone)
+    // 1. Half-step velocity & full-step position for ALL moving bodies
     for (const b of simBodies) {
-      if (!b.fixed) b.pos.addTo(b.vel.mul(DT));
+      if (b.fixed) continue;
+      b.vel.x += 0.5 * b.acc.x * DT;
+      b.vel.y += 0.5 * b.acc.y * DT;
+      b.pos.x += b.vel.x * DT;
+      b.pos.y += b.vel.y * DT;
     }
 
-    const nextAcc = getProbeAcc(probe.pos, simBodies);
-    probe.vel = vHalf.add(nextAcc.mul(0.5 * DT));
-    acc = nextAcc;
+    // 2. Recompute pairwise gravity at new positions & finish velocity step
+    computeAllAccelerations(simBodies);
+    for (const b of simBodies) {
+      if (b.fixed) continue;
+      b.vel.x += 0.5 * b.acc.x * DT;
+      b.vel.y += 0.5 * b.acc.y * DT;
+    }
 
     const screenCoord = camera.toScreen(probe.pos);
     ctx.lineTo(screenCoord.x, screenCoord.y);
 
-    // Stop preview line early if it hits a planet or enters the goal
-    const hitBody = simBodies.some(b => probe.pos.sub(b.pos).len() <= b.radius + 0.22);
+    // Stop preview if probe hits a star/planet or enters the goal
+    const hitBody = simBodies.some(b => b !== probe && probe.pos.sub(b.pos).len() <= b.radius + probe.radius + 0.05);
     const hitGoal = probe.pos.sub(golfState.goalPos).len() <= golfState.goalRadius;
     if (hitBody || hitGoal) break;
   }
@@ -492,6 +518,7 @@ function drawTrajectoryPreview(ctx, world, camera, startPos, launchVel, totalSte
   ctx.stroke();
   ctx.restore();
 }
+
 
 // --- IGNITION ---
 initScene();
