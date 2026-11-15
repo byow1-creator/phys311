@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbital Golf — Gravitational Slingshot Simulation</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="dashboard">
+    <div class="control-group">
+      <label>Integrator</label>
+     <div style="color: #d2ff1e; font-size: 14px; font-weight: 600; padding: 8px 0;">
+        Velocity Verlet (Symplectic)
+      </div>
+
+    <div class="control-group">
+      <label for="centralMass">Star Mass: <span id="centralMassVal">55</span></label>
+      <input type="range" id="centralMass" min="20" max="120" step="1" value="55" />
+    </div>
+
+    <div class="control-group">
+      <label for="previewSteps">Ghost Steps: <span id="previewStepsVal">180</span></label>
+      <input type="range" id="previewSteps" min="60" max="400" step="20" value="180" />
+    </div>
+
+    <div class="control-group">
+      <label>Visuals</label>
+      <div style="display: flex; gap: 10px; font-size: 13px;">
+        <label style="text-transform: none; color: #d2ff1e;"><input type="checkbox" id="toggleColor" checked /> Speed Color</label>
+        <label style="text-transform: none; color: #d2ff1e;"><input type="checkbox" id="toggleVel" checked /> Velocity</label>
+        <label style="text-transform: none; color: #d2ff1e;"><input type="checkbox" id="toggleContacts" checked /> Contacts</label>
+      </div>
+    </div>
+
+    <div class="control-group" style="flex-direction: row; align-items: flex-end; gap: 8px;">
+      <button id="pauseBtn">Pause</button>
+      <button id="stepBtn">Step</button>
+      <button id="resetBtn">Reset Hole</button>
+    </div>
+  </div>
+    <div id="telemetryBar" style="width: 100%; border-top: 1px solid #64748b; padding-top: 10px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-family: monospace; font-size: 13px; color: #d2ff1e;">
+      <span>t: <strong id="hudTime">0.00 s</strong></span>
+      <span>E: <strong id="hudEnergy">0.0000 J</strong></span>
+      <span>dE/E0: <strong id="hudDrift">0.000 %</strong></span>
+      <span>|p|: <strong id="hudMom">0.0000</strong></span>
+      <span>FPS: <strong id="hudFps">60</strong></span>
+      <span>Strokes: <strong id="hudStrokes">0</strong></span>
+      <span>Speed: <strong id="hudSpeed">0.00 m/s</strong></span>
+      <span>Status: <strong id="hudStatus">AIMING</strong></span>
+    </div>
+
+
+
+  <div id="canvasContainer">
+    <canvas id="physicsCanvas" width="960" height="540"></canvas>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
